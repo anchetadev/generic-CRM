@@ -110,7 +110,7 @@ model CadenceTask {
   id           String   @id @default(cuid())
   enrollmentId String   @map("enrollment_id")
   stepId       String   @map("step_id")
-  assigneeId   String   @map("assignee_id")
+  assigneeId   String?  @map("assignee_id")
 
   title        String
   channel      CadenceChannel
@@ -120,7 +120,7 @@ model CadenceTask {
 
   enrollment   CadenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   step         CadenceStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
-  assignee     User              @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Cascade)
+  assignee     User              @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 
   @@index([assigneeId, dueAt])
   @@index([enrollmentId])
