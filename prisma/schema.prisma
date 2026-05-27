@@ -53,6 +53,7 @@ model CadenceStep {
   id           String @id @default(cuid())
   cadenceId    String @map("cadence_id")
   sortOrder    Int    @map("sort_order")
+  name         String
 
   // timing
   delayMinutes Int    @map("delay_minutes")
@@ -67,6 +68,7 @@ model CadenceStep {
   // {{contact.name}}, {{contact.company}}, etc.
 
   cadence      Cadence @relation(fields: [cadenceId], references: [id], onDelete: Cascade)
+  enrollments  CadenceEnrollment[]
 
   @@unique([cadenceId, sortOrder])
   @@map("cadence_steps")
@@ -80,18 +82,18 @@ enum CadenceChannel {
 }
 
 model CadenceEnrollment {
-  id         String   @id @default(cuid())
-  cadenceId  String   @map("cadence_id")
-  contactId  String   @map("contact_id")
-  currentStep Int     @default(0) @map("current_step")
-  // 0-indexed — which step the contact is on
-  status     EnrollmentStatus @default(ACTIVE)
-  enrolledAt DateTime @default(now()) @map("enrolled_at")
-  completedAt DateTime? @map("completed_at")
+  id           String   @id @default(cuid())
+  cadenceId    String   @map("cadence_id")
+  contactId    String   @map("contact_id")
+  currentStepId String? @map("current_step_id")
+  status       EnrollmentStatus @default(ACTIVE)
+  enrolledAt   DateTime @default(now()) @map("enrolled_at")
+  completedAt  DateTime? @map("completed_at")
 
-  cadence    Cadence  @relation(fields: [cadenceId], references: [id])
-  contact    Contact  @relation(fields: [contactId], references: [id])
-  tasks      CadenceTask[]
+  cadence      Cadence  @relation(fields: [cadenceId], references: [id], onDelete: Restrict)
+  contact      Contact  @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  currentStep  CadenceStep? @relation(fields: [currentStepId], references: [id])
+  tasks        CadenceTask[]
 
   @@unique([cadenceId, contactId])
   @@map("cadence_enrollments")
@@ -116,9 +118,9 @@ model CadenceTask {
   completedAt  DateTime? @map("completed_at")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  enrollment   CadenceEnrollment @relation(fields: [enrollmentId], references: [id])
-  step         CadenceStep       @relation(fields: [stepId], references: [id])
-  assignee     User              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  enrollment   CadenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  step         CadenceStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  assignee     User              @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Cascade)
 
   @@index([assigneeId, dueAt])
   @@index([enrollmentId])
