@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Core ────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  assignedTasks CadenceTask[] @relation("TaskAssignee")
+
+  @@map("users")
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  phone     String?
+  company   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  enrollments CadenceEnrollment[]
+
+  @@map("contacts")
+}
+
+// ── Cadence Engine ──────────────────────────────────────
+
+model Cadence {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  steps       CadenceStep[]
+  enrollments CadenceEnrollment[]
+
+  @@map("cadences")
+}
+
+model CadenceStep {
+  id           String @id @default(cuid())
+  cadenceId    String @map("cadence_id")
+  sortOrder    Int    @map("sort_order")
+
+  // timing
+  delayMinutes Int    @map("delay_minutes")
+  // delay is relative to previous step; step 0 fires immediately on enrollment
+
+  // channel
+  channel      CadenceChannel
+
+  // template
+  subject      String?
+  bodyTemplate String  @map("body_template")
+  // {{contact.name}}, {{contact.company}}, etc.
+
+  cadence      Cadence @relation(fields: [cadenceId], references: [id], onDelete: Cascade)
+
+  @@unique([cadenceId, sortOrder])
+  @@map("cadence_steps")
+}
+
+enum CadenceChannel {
+  EMAIL
+  CALL
+  SMS
+  LINKEDIN
+}
+
+model CadenceEnrollment {
+  id         String   @id @default(cuid())
+  cadenceId  String   @map("cadence_id")
+  contactId  String   @map("contact_id")
+  currentStep Int     @default(0) @map("current_step")
+  // 0-indexed — which step the contact is on
+  status     EnrollmentStatus @default(ACTIVE)
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+  completedAt DateTime? @map("completed_at")
+
+  cadence    Cadence  @relation(fields: [cadenceId], references: [id])
+  contact    Contact  @relation(fields: [contactId], references: [id])
+  tasks      CadenceTask[]
+
+  @@unique([cadenceId, contactId])
+  @@map("cadence_enrollments")
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  UNENROLLED
+}
+
+model CadenceTask {
+  id           String   @id @default(cuid())
+  enrollmentId String   @map("enrollment_id")
+  stepId       String   @map("step_id")
+  assigneeId   String   @map("assignee_id")
+
+  title        String
+  channel      CadenceChannel
+  dueAt        DateTime @map("due_at")
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  enrollment   CadenceEnrollment @relation(fields: [enrollmentId], references: [id])
+  step         CadenceStep       @relation(fields: [stepId], references: [id])
+  assignee     User              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  @@index([assigneeId, dueAt])
+  @@index([enrollmentId])
+  @@map("cadence_tasks")
+}
