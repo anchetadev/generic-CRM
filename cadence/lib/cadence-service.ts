@@ -90,6 +90,7 @@ async function generateTask(
       stepId: params.step.id,
       assigneeId: params.assigneeId,
       title: resolvedTitle,
+      body,
       channel: params.step.channel,
       dueAt: new Date(Date.now() + params.delayMinutes * 60 * 1000),
     },
@@ -108,14 +109,24 @@ export async function completeTask(
   params: CompleteTaskParams,
 ): Promise<{ completed: CadenceTask; nextTask: CadenceTask | null }> {
   return prisma.$transaction(async (tx) => {
+    // 0. Guard: already-completed tasks must not advance again
+    const existing = await tx.cadenceTask.findUniqueOrThrow({
+      where: { id: params.taskId },
+      include: { step: true, enrollment: true },
+    });
+
+    if (existing.completedAt !== null) {
+      return { completed: existing, nextTask: null };
+    }
+
+    if (!existing.enrollment) throw new Error('Task has no enrollment');
+
     // 1. Mark task completed
     const task = await tx.cadenceTask.update({
       where: { id: params.taskId },
       data: { completedAt: new Date() },
       include: { step: true, enrollment: true },
     });
-
-    if (!task.enrollment) throw new Error('Task has no enrollment');
 
     const enrollment = task.enrollment;
     const currentStepSortOrder = task.step.sortOrder;
@@ -167,6 +178,11 @@ export async function skipTask(
       where: { id: taskId },
       include: { step: true, enrollment: true },
     });
+
+    // Guard: already-completed tasks must not advance again
+    if (task.completedAt !== null) {
+      return { skipped: task, nextTask: null };
+    }
 
     if (!task.enrollment) throw new Error('Task has no enrollment');
 

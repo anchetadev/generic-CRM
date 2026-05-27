@@ -48,6 +48,7 @@ export interface CadenceTaskData {
   stepId: string;
   assigneeId: string | null;
   title: string;
+  body: string | null;
   channel: CadenceChannel;
   dueAt: Date;
   completedAt: Date | null;

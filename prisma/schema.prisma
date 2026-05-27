@@ -114,6 +114,7 @@ model CadenceTask {
   assigneeId   String?  @map("assignee_id")
 
   title        String
+  body         String?
   channel      CadenceChannel
   dueAt        DateTime @map("due_at")
   completedAt  DateTime? @map("completed_at")
