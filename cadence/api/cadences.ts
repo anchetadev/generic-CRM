@@ -128,6 +128,19 @@ export async function updateCadence(
 
     // Replace steps if provided
     if (input.steps) {
+      // Guard: block step changes while active or paused enrollments exist
+      const activeCount = await tx.cadenceEnrollment.count({
+        where: {
+          cadenceId: id,
+          status: { in: ['ACTIVE', 'PAUSED'] },
+        },
+      });
+      if (activeCount > 0) {
+        throw new Error(
+          `Cannot update steps while ${activeCount} active enrollment(s) exist. Pause or complete them first.`,
+        );
+      }
+
       // Delete removed steps
       await tx.cadenceStep.deleteMany({ where: { cadenceId: id } });
 
@@ -168,7 +181,9 @@ export async function deactivateCadence(id: string): Promise<CadenceWithSteps> {
 
 // ── Helpers ─────────────────────────────────────────────
 
-function toCadenceWithSteps(cadence: any): CadenceWithSteps {
+function toCadenceWithSteps(
+  cadence: Prisma.CadenceGetPayload<{ include: { steps: true } }>,
+): CadenceWithSteps {
   return {
     id: cadence.id,
     name: cadence.name,
@@ -180,7 +195,9 @@ function toCadenceWithSteps(cadence: any): CadenceWithSteps {
   };
 }
 
-function toStepData(step: any): CadenceStepData {
+function toStepData(
+  step: Prisma.CadenceStepGetPayload<{}>,
+): CadenceStepData {
   return {
     id: step.id,
     cadenceId: step.cadenceId,
