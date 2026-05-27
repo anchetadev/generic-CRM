@@ -69,6 +69,7 @@ model CadenceStep {
 
   cadence      Cadence @relation(fields: [cadenceId], references: [id], onDelete: Cascade)
   enrollments  CadenceEnrollment[]
+  tasks        CadenceTask[]
 
   @@unique([cadenceId, sortOrder])
   @@map("cadence_steps")
@@ -120,7 +121,7 @@ model CadenceTask {
 
   enrollment   CadenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   step         CadenceStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
-  assignee     User              @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assignee     User?             @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 
   @@index([assigneeId, dueAt])
   @@index([enrollmentId])
