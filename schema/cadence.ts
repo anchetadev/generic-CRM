@@ -1,99 +1,85 @@
 // Phase B: Cadence Engine — TypeScript types
-// Mirrors schema/cadence.sql
+// Mirrors prisma/schema.prisma
 
-export interface CadenceSequence {
+import type { CadenceChannel, EnrollmentStatus } from '@prisma/client';
+export type { CadenceChannel, EnrollmentStatus };
+
+// ── Cadence ─────────────────────────────────────────────
+
+export interface CadenceWithSteps {
   id: string;
   name: string;
   description: string | null;
-  targetType: 'contact' | 'lead';
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
+  steps: CadenceStepData[];
 }
 
-export type CadenceChannel = 'email' | 'call' | 'sms' | 'linkedin' | 'manual';
-export type CadenceActionType = 'send_message' | 'make_call' | 'send_sms' | 'manual_task';
-export type CadenceWaitType = 'calendar' | 'business_hours';
-export type CadenceExecutionStatus = 'active' | 'paused' | 'completed' | 'cancelled';
-export type CadenceTaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
-
-export interface CadenceStepCondition {
-  field: string;
-  op: '>' | '<' | '>=' | '<=' | '==' | '!=';
-  value: string | number | boolean;
-}
-
-export interface CadenceStep {
+export interface CadenceStepData {
   id: string;
-  sequenceId: string;
-  stepNumber: number;
+  cadenceId: string;
+  sortOrder: number;
+  name: string;
+  delayMinutes: number;
   channel: CadenceChannel;
-  actionType: CadenceActionType;
-  subjectTemplate: string | null;
-  bodyTemplate: string | null;
-  waitDurationMinutes: number;
-  waitType: CadenceWaitType;
-  condition: CadenceStepCondition | null;
-  createdAt: string;
-  updatedAt: string;
+  subject: string | null;
+  bodyTemplate: string;
 }
 
-export interface CadenceExecution {
+// ── Enrollment ─────────────────────────────────────────
+
+export interface EnrollmentWithTasks {
   id: string;
-  sequenceId: string;
+  cadenceId: string;
   contactId: string;
-  assignedRepId: string;
-  currentStepNumber: number;
-  status: CadenceExecutionStatus;
-  startedAt: string;
-  completedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  currentStepId: string | null;
+  status: EnrollmentStatus;
+  enrolledAt: Date;
+  completedAt: Date | null;
+  tasks: CadenceTaskData[];
 }
 
-export interface CadenceTask {
+// ── Task ────────────────────────────────────────────────
+
+export interface CadenceTaskData {
   id: string;
-  executionId: string;
+  enrollmentId: string;
   stepId: string;
-  contactId: string;
-  assignedRepId: string;
-  dueDate: string;
-  status: CadenceTaskStatus;
-  completedAt: string | null;
-  notes: string | null;
-  createdAt: string;
-  updatedAt: string;
+  assigneeId: string | null;
+  title: string;
+  channel: CadenceChannel;
+  dueAt: Date;
+  completedAt: Date | null;
+  createdAt: Date;
 }
 
-// Computed / joined types ------------------------------------------------
+// ── Overdue ─────────────────────────────────────────────
 
-export interface CadenceOverdueTask extends CadenceTask {
+export interface CadenceOverdueTask extends CadenceTaskData {
   contactName: string;
-  sequenceName: string;
+  cadenceName: string;
   hoursOverdue: number;
+  contactId: string;
+  enrollmentId: string;
 }
+
+// ── CEO Daily ───────────────────────────────────────────
 
 export interface CeoDailyCadenceRow {
-  assignedRepId: string;
+  assigneeId: string;
   day: string;
-  activeExecutions: number;
-  completedExecutions: number;
+  activeEnrollments: number;
+  completedEnrollments: number;
   tasksCompletedToday: number;
   overdueTasks: number;
 }
 
-// Cadence runner state machine transitions --------------------------------
+// ── State transitions ───────────────────────────────────
 
-export const CADENCE_EXECUTION_TRANSITIONS: Record<CadenceExecutionStatus, CadenceExecutionStatus[]> = {
-  active:    ['paused', 'completed', 'cancelled'],
-  paused:    ['active', 'cancelled'],
-  completed: [],
-  cancelled: [],
-};
-
-export const CADENCE_TASK_TRANSITIONS: Record<CadenceTaskStatus, CadenceTaskStatus[]> = {
-  pending:      ['in_progress', 'skipped'],
-  in_progress:  ['completed', 'skipped'],
-  completed:    [],
-  skipped:      [],
+export const ENROLLMENT_TRANSITIONS: Record<EnrollmentStatus, EnrollmentStatus[]> = {
+  ACTIVE:     ['PAUSED', 'COMPLETED', 'UNENROLLED'],
+  PAUSED:     ['ACTIVE', 'UNENROLLED'],
+  COMPLETED:  [],
+  UNENROLLED: [],
 };
