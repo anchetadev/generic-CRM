@@ -66,8 +66,8 @@ export async function listTaskQueue(
     dueAt: t.dueAt,
     completedAt: t.completedAt,
     isOverdue: !t.completedAt && t.dueAt < now,
-    contactName: (t as any).contactName ?? 'Unknown',
-    cadenceName: (t as any).cadenceName ?? 'Unknown',
+    contactName: t.contactName ?? 'Unknown',
+    cadenceName: t.cadenceName ?? 'Unknown',
     enrollmentId: t.enrollmentId,
     stepId: t.stepId,
     assigneeId: t.assigneeId,
@@ -96,24 +96,14 @@ export interface OverdueQueueResult {
 export async function getOverdueQueue(): Promise<OverdueQueueResult> {
   const items = await overdueApi.listOverdue();
 
-  // Aggregate by cadence
+  // Aggregate by cadence (using cadenceId, not enrollmentId)
   const cadenceMap = new Map<string, { cadenceId: string; cadenceName: string; count: number }>();
   for (const t of items) {
-    const entry = cadenceMap.get(t.enrollmentId);
-    if (!entry) {
-      cadenceMap.set(t.enrollmentId, { cadenceId: t.enrollmentId, cadenceName: t.cadenceName, count: 1 });
+    const existing = cadenceMap.get(t.cadenceId);
+    if (existing) {
+      existing.count++;
     } else {
-      entry.count++;
-    }
-  }
-  // Deduplicate by cadence name for the byCadence view
-  const cadenceNameMap = new Map<string, { cadenceName: string; count: number }>();
-  for (const t of items) {
-    const entry = cadenceNameMap.get(t.cadenceName);
-    if (entry) {
-      entry.count++;
-    } else {
-      cadenceNameMap.set(t.cadenceName, { cadenceName: t.cadenceName, count: 1 });
+      cadenceMap.set(t.cadenceId, { cadenceId: t.cadenceId, cadenceName: t.cadenceName, count: 1 });
     }
   }
 
@@ -127,11 +117,7 @@ export async function getOverdueQueue(): Promise<OverdueQueueResult> {
   return {
     items,
     total: items.length,
-    byCadence: Array.from(cadenceNameMap.values()).map((v) => ({
-      cadenceId: '', // not available without cross-referencing
-      cadenceName: v.cadenceName,
-      count: v.count,
-    })),
+    byCadence: Array.from(cadenceMap.values()),
     byAssignee: Array.from(assigneeMap.entries()).map(([assigneeId, count]) => ({
       assigneeId: assigneeId === '__UNASSIGNED__' ? null : assigneeId,
       count,
@@ -184,8 +170,8 @@ export async function getTaskDetail(taskId: string): Promise<TaskDetailView | nu
   return {
     task,
     metadata: {
-      contactName: (task as any).contactName ?? 'Unknown',
-      cadenceName: (task as any).cadenceName ?? 'Unknown',
+      contactName: task.contactName ?? 'Unknown',
+      cadenceName: task.cadenceName ?? 'Unknown',
       isOverdue: !task.completedAt && task.dueAt < now,
     },
   };
