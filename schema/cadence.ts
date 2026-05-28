@@ -53,6 +53,8 @@ export interface CadenceTaskData {
   dueAt: Date;
   completedAt: Date | null;
   createdAt: Date;
+  contactName?: string;
+  cadenceName?: string;
 }
 
 // ── Overdue ─────────────────────────────────────────────
@@ -60,9 +62,9 @@ export interface CadenceTaskData {
 export interface CadenceOverdueTask extends CadenceTaskData {
   contactName: string;
   cadenceName: string;
+  cadenceId: string;
   hoursOverdue: number;
   contactId: string;
-  enrollmentId: string;
 }
 
 // ── CEO Daily ───────────────────────────────────────────

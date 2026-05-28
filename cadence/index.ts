@@ -31,5 +31,8 @@ export * as enrollments from './api/enrollments';
 export * as tasks from './api/tasks';
 export * as overdue from './api/overdue';
 
+// Views (composable presentation layer)
+export * as views from './views';
+
 // Prisma client (for use in routes / tests)
 export { prisma } from './lib/prisma';

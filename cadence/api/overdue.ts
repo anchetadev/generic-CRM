@@ -35,6 +35,7 @@ export async function listOverdue(): Promise<CadenceOverdueTask[]> {
     createdAt: t.createdAt,
     contactId: t.enrollment.contact.id,
     contactName: t.enrollment.contact.name,
+    cadenceId: t.enrollment.cadence.id,
     cadenceName: t.enrollment.cadence.name,
     hoursOverdue: Math.round(
       ((now.getTime() - t.dueAt.getTime()) / (1000 * 60 * 60)) * 10,
