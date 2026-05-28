@@ -28,6 +28,7 @@ export async function listOverdue(): Promise<CadenceOverdueTask[]> {
     stepId: t.stepId,
     assigneeId: t.assigneeId,
     title: t.title,
+    body: t.body,
     channel: t.channel,
     dueAt: t.dueAt,
     completedAt: t.completedAt,
