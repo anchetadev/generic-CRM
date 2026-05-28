@@ -116,5 +116,7 @@ function toTaskData(t: any): CadenceTaskData {
     dueAt: t.dueAt,
     completedAt: t.completedAt,
     createdAt: t.createdAt,
+    contactName: t.enrollment?.contact?.name,
+    cadenceName: t.enrollment?.cadence?.name,
   };
 }

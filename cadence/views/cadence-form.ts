@@ -7,7 +7,7 @@ import type {
   UpdateCadenceInput,
   UpsertStepInput,
 } from '../api/cadences';
-import type { CadenceChannel } from '@prisma/client';
+import type { CadenceChannel, CadenceWithSteps } from '../../schema/cadence';
 
 // Re-export the input types for form consumers
 export type {
@@ -23,6 +23,21 @@ export interface ValidationError {
   field: string;
   message: string;
 }
+
+export interface FormErrorResult {
+  success: false;
+  errors: ValidationError[];
+}
+
+export interface FormApiErrorResult {
+  success: false;
+  error: string;
+}
+
+export type FormResult<T> =
+  | { success: true; data: T }
+  | FormErrorResult
+  | FormApiErrorResult;
 
 export function validateCadenceInput(
   input: CreateCadenceInput,
@@ -95,34 +110,48 @@ export function validateUpdateInput(
 /** Create a cadence from form input. */
 export async function submitCreateCadence(
   input: CreateCadenceInput,
-) {
+): Promise<FormResult<CadenceWithSteps>> {
   const errors = validateCadenceInput(input);
   if (errors.length > 0) {
-    return { success: false as const, errors };
+    return { success: false, errors };
   }
 
-  const cadence = await cadenceApi.createCadence(input);
-  return { success: true as const, cadence };
+  try {
+    const cadence = await cadenceApi.createCadence(input);
+    return { success: true, data: cadence };
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? 'Create cadence failed' };
+  }
 }
 
 /** Update a cadence from form input. */
 export async function submitUpdateCadence(
   id: string,
   input: UpdateCadenceInput,
-) {
+): Promise<FormResult<CadenceWithSteps>> {
   const errors = validateUpdateInput(input);
   if (errors.length > 0) {
-    return { success: false as const, errors };
+    return { success: false, errors };
   }
 
-  const cadence = await cadenceApi.updateCadence(id, input);
-  return { success: true as const, cadence };
+  try {
+    const cadence = await cadenceApi.updateCadence(id, input);
+    return { success: true, data: cadence };
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? 'Update cadence failed' };
+  }
 }
 
 /** Deactivate a cadence. */
-export async function submitDeactivateCadence(id: string) {
-  const cadence = await cadenceApi.deactivateCadence(id);
-  return { success: true as const, cadence };
+export async function submitDeactivateCadence(
+  id: string,
+): Promise<FormResult<CadenceWithSteps>> {
+  try {
+    const cadence = await cadenceApi.deactivateCadence(id);
+    return { success: true, data: cadence };
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? 'Deactivate cadence failed' };
+  }
 }
 
 // ── Step form helpers ───────────────────────────────────

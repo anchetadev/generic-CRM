@@ -1,14 +1,12 @@
 // Cadence detail view — steps, enrollments, overdue tasks for a single cadence.
-// Wires to cadence/api/cadences.ts, cadence/api/enrollments.ts, cadence/api/tasks.ts, cadence/api/overdue.ts.
+// Wires to cadence/api/cadences.ts, cadence/api/enrollments.ts, cadence/api/overdue.ts.
 
 import * as cadenceApi from '../api/cadences';
 import * as enrollmentApi from '../api/enrollments';
-import * as taskApi from '../api/tasks';
 import * as overdueApi from '../api/overdue';
 import type {
   CadenceWithSteps,
   EnrollmentWithTasks,
-  CadenceTaskData,
   CadenceOverdueTask,
   CadenceStepData,
 } from '../../schema/cadence';
@@ -59,7 +57,6 @@ export async function getCadenceDetail(id: string): Promise<CadenceDetailView | 
 
   const enrollmentRows = enrollments.map(toEnrollmentRow);
 
-  // Summary counts
   const summary: CadenceDetailSummary = {
     totalEnrollments: enrollments.length,
     activeEnrollments: enrollments.filter((e) => e.status === 'ACTIVE').length,
@@ -89,7 +86,6 @@ function toEnrollmentRow(e: EnrollmentWithTasks): EnrollmentDetailRow {
     .filter((t) => t.dueAt >= now)
     .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())[0] ?? null;
 
-  // Determine current step name
   let currentStepName: string | null = null;
   if (e.currentStepId && e.tasks.length > 0) {
     const currentTask = e.tasks.find((t) => t.stepId === e.currentStepId);
@@ -110,42 +106,21 @@ function toEnrollmentRow(e: EnrollmentWithTasks): EnrollmentDetailRow {
   };
 }
 
-/** Filter overdue tasks specific to this cadence. */
+/** Filter overdue tasks specific to this cadence (uses cadenceId on the task). */
 async function getOverdueTasksForCadence(
   cadenceId: string,
 ): Promise<CadenceOverdueTask[]> {
-  // overdue API doesn't have a cadence filter yet, so we fetch all and filter client-side.
-  // For large datasets, add a by-cadence overload upstream.
   const all = await overdueApi.listOverdue();
-  // The CadenceOverdueTask type doesn't carry cadenceId directly; we filter by enrollment
-  // which is keyed by cadence. However, we'd need to join. For now, return all and let
-  // the caller use task.enrollmentId to resolve cadence membership if needed.
-  //
-  // Better: fetch enrollments for this cadence, then their overdue tasks.
-  const enrollments = await enrollmentApi.listByCadence(cadenceId);
-  const enrollmentIds = new Set(enrollments.map((e) => e.id));
-  return all.filter((t) => enrollmentIds.has(t.enrollmentId));
+  return all.filter((t) => t.cadenceId === cadenceId);
 }
 
 // ── Steps view ──────────────────────────────────────────
 
-export interface StepDetailRow {
-  id: string;
-  sortOrder: number;
-  name: string;
-  delayMinutes: number;
-  channel: string;
-  subject: string | null;
-  bodyTemplate: string;
-  pendingTaskCount: number;
-  completedTaskCount: number;
-}
-
 export async function getStepDetails(
   cadenceId: string,
-): Promise<{ steps: CadenceStepData[]; enrollmentCount: number }> {
+): Promise<{ steps: CadenceStepData[]; enrollmentCount: number } | null> {
   const cadence = await cadenceApi.getCadence(cadenceId);
-  if (!cadence) throw new Error(`Cadence ${cadenceId} not found`);
+  if (!cadence) return null;
 
   const enrollments = await enrollmentApi.listByCadence(cadenceId);
 
