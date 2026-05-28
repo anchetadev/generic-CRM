@@ -16,6 +16,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
 
   assignedTasks CadenceTask[] @relation("TaskAssignee")
+  assignedLeads Lead[] @relation("LeadOwner")
 
   @@map("users")
 }
@@ -31,6 +32,59 @@ model Contact {
   enrollments CadenceEnrollment[]
 
   @@map("contacts")
+}
+
+// ── Leads ───────────────────────────────────────────────
+
+model Lead {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  source    String?
+  status    LeadStatus @default(NEW)
+  ownerId   String?  @map("owner_id")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner     User?    @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  activities LeadActivity[]
+
+  @@index([ownerId, status])
+  @@index([status])
+  @@map("leads")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DISQUALIFIED
+  CONVERTED
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String   @map("lead_id")
+  type      ActivityType
+  subject   String?
+  body      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_activities")
+}
+
+enum ActivityType {
+  NOTE
+  EMAIL
+  CALL
+  MEETING
+  TASK
 }
 
 // ── Cadence Engine ──────────────────────────────────────
