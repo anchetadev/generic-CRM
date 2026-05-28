@@ -120,6 +120,7 @@ function toTaskData(task: any): CadenceTaskData {
     stepId: task.stepId,
     assigneeId: task.assigneeId,
     title: task.title,
+    body: task.body,
     channel: task.channel,
     dueAt: task.dueAt,
     completedAt: task.completedAt,
