@@ -1,0 +1,20 @@
+{
+  "name": "generic-crm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-tenant CRM for lead management, outreach cadences, and meeting scheduling",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.15.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.15.0",
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0"
+  }
+}
