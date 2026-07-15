@@ -2,7 +2,9 @@
 // Wires to lead/api/leads.ts.
 
 import * as leadApi from '../api/leads';
+import { prisma } from '../lib/prisma';
 import type { LeadData, LeadStatus } from '../../schema/lead';
+import type { Prisma } from '@prisma/client';
 
 // ── Row types ───────────────────────────────────────────
 
@@ -38,7 +40,24 @@ export async function listLeadsView(
 ): Promise<LeadListResult> {
   const { items, total } = await leadApi.listLeads(params);
 
-  // Count by status for dashboard summary
+  // Single groupBy query replaces the N+1 count pattern
+  const where: Prisma.LeadWhereInput = {};
+  if (params?.ownerId) where.ownerId = params.ownerId;
+  if (params?.search) {
+    const term = params.search;
+    where.OR = [
+      { name: { contains: term, mode: 'insensitive' } },
+      { email: { contains: term, mode: 'insensitive' } },
+      { company: { contains: term, mode: 'insensitive' } },
+    ];
+  }
+
+  const grouped = await prisma.lead.groupBy({
+    by: ['status'],
+    where,
+    _count: { _all: true },
+  });
+
   const byStatus: Record<LeadStatus, number> = {
     NEW: 0,
     CONTACTED: 0,
@@ -46,37 +65,8 @@ export async function listLeadsView(
     DISQUALIFIED: 0,
     CONVERTED: 0,
   };
-
-  // If filtering by status, we need full count for byStatus
-  if (params?.status) {
-    const allStatuses: LeadStatus[] = ['NEW', 'CONTACTED', 'QUALIFIED', 'DISQUALIFIED', 'CONVERTED'];
-    const counts = await Promise.all(
-      allStatuses.map(async (s) => {
-        const result = await leadApi.listLeads({ ...params, status: s, limit: 0, offset: 0 });
-        return [s, result.total] as const;
-      }),
-    );
-    for (const [s, count] of counts) {
-      byStatus[s] = count;
-    }
-  } else {
-    for (const lead of items) {
-      byStatus[lead.status]++;
-    }
-    // If we have more items than fit on one page, the byStatus counts are partial.
-    // For accurate counts, re-query without limit.
-    if (total > (params?.limit ?? Infinity)) {
-      const allStatuses: LeadStatus[] = ['NEW', 'CONTACTED', 'QUALIFIED', 'DISQUALIFIED', 'CONVERTED'];
-      const counts = await Promise.all(
-        allStatuses.map(async (s) => {
-          const result = await leadApi.listLeads({ ...params, status: s, limit: 0, offset: 0 });
-          return [s, result.total] as const;
-        }),
-      );
-      for (const [s, count] of counts) {
-        byStatus[s] = count;
-      }
-    }
+  for (const row of grouped) {
+    byStatus[row.status] = row._count._all;
   }
 
   return {
