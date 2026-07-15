@@ -4,6 +4,7 @@
 import * as cadenceApi from '../api/cadences';
 import * as enrollmentApi from '../api/enrollments';
 import * as overdueApi from '../api/overdue';
+import { prisma } from '../lib/prisma';
 import type {
   CadenceWithSteps,
   EnrollmentWithTasks,
@@ -106,12 +107,49 @@ function toEnrollmentRow(e: EnrollmentWithTasks): EnrollmentDetailRow {
   };
 }
 
-/** Filter overdue tasks specific to this cadence (uses cadenceId on the task). */
+/** Query overdue tasks filtered at the DB level by cadenceId. */
 async function getOverdueTasksForCadence(
   cadenceId: string,
 ): Promise<CadenceOverdueTask[]> {
-  const all = await overdueApi.listOverdue();
-  return all.filter((t) => t.cadenceId === cadenceId);
+  const now = new Date();
+
+  const tasks = await prisma.cadenceTask.findMany({
+    where: {
+      completedAt: null,
+      dueAt: { lt: now },
+      enrollment: { is: { cadenceId, status: 'ACTIVE' } },
+    },
+    include: {
+      enrollment: {
+        include: {
+          contact: { select: { id: true, name: true } },
+          cadence: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { dueAt: 'asc' },
+  });
+
+  return tasks.map((t) => ({
+    id: t.id,
+    enrollmentId: t.enrollmentId,
+    stepId: t.stepId,
+    assigneeId: t.assigneeId,
+    leadId: t.leadId,
+    title: t.title,
+    body: t.body,
+    channel: t.channel,
+    status: t.status,
+    dueAt: t.dueAt,
+    completedAt: t.completedAt,
+    createdAt: t.createdAt,
+    contactId: t.enrollment.contact.id,
+    contactName: t.enrollment.contact.name,
+    cadenceId: t.enrollment.cadence.id,
+    cadenceName: t.enrollment.cadence.name,
+    hoursOverdue:
+      Math.round(((now.getTime() - t.dueAt.getTime()) / (1000 * 60 * 60)) * 10) / 10,
+  }));
 }
 
 // ── Steps view ──────────────────────────────────────────
