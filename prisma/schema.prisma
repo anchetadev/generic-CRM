@@ -16,6 +16,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
 
   assignedTasks CadenceTask[] @relation("TaskAssignee")
+  assignedLeads Lead[] @relation("LeadOwner")
 
   @@map("users")
 }
@@ -29,8 +30,68 @@ model Contact {
   createdAt DateTime @default(now()) @map("created_at")
 
   enrollments CadenceEnrollment[]
+  leads       Lead[]
 
   @@map("contacts")
+}
+
+// ── Leads ───────────────────────────────────────────────
+
+model Lead {
+  id          String    @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  company     String?
+  source      String?
+  status      LeadStatus @default(NEW)
+  ownerId     String?   @map("owner_id")
+  contactId   String?   @map("contact_id")
+  followUpAt  DateTime? @map("follow_up_at")
+  notes       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  owner     User?    @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  activities LeadActivity[]
+  cadenceTasks CadenceTask[]
+
+  @@index([ownerId, status])
+  @@index([status])
+  @@index([contactId])
+  @@index([followUpAt])
+  @@map("leads")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DISQUALIFIED
+  CONVERTED
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String   @map("lead_id")
+  type      ActivityType
+  subject   String?
+  body      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_activities")
+}
+
+enum ActivityType {
+  NOTE
+  EMAIL
+  CALL
+  MEETING
+  TASK
 }
 
 // ── Cadence Engine ──────────────────────────────────────
@@ -112,10 +173,12 @@ model CadenceTask {
   enrollmentId String   @map("enrollment_id")
   stepId       String   @map("step_id")
   assigneeId   String?  @map("assignee_id")
+  leadId       String?  @map("lead_id")
 
   title        String
   body         String?
   channel      CadenceChannel
+  status       TaskStatus @default(PENDING)
   dueAt        DateTime @map("due_at")
   completedAt  DateTime? @map("completed_at")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -123,8 +186,18 @@ model CadenceTask {
   enrollment   CadenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   step         CadenceStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
   assignee     User?             @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  lead         Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   @@index([assigneeId, dueAt])
   @@index([enrollmentId])
+  @@index([leadId])
+  @@index([status, dueAt])
   @@map("cadence_tasks")
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
 }

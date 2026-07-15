@@ -110,11 +110,15 @@ function toTaskData(t: any): CadenceTaskData {
     enrollmentId: t.enrollmentId,
     stepId: t.stepId,
     assigneeId: t.assigneeId,
+    leadId: t.leadId ?? null,
     title: t.title,
     body: t.body ?? null,
     channel: t.channel,
+    status: t.status ?? 'PENDING',
     dueAt: t.dueAt,
     completedAt: t.completedAt,
     createdAt: t.createdAt,
+    contactName: t.enrollment?.contact?.name,
+    cadenceName: t.enrollment?.cadence?.name,
   };
 }

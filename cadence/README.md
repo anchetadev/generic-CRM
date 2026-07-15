@@ -16,6 +16,13 @@ cadence/
 │   ├── enrollments.ts    # Enrollment management (enroll, pause, resume, unenroll)
 │   ├── tasks.ts          # Task queries (list by assignee, complete, skip)
 │   └── overdue.ts        # Overdue detection
+├── views/
+│   ├── index.ts          # View module barrel export
+│   ├── cadence-list.ts   # List view with enrollment counts + dashboard stats
+│   ├── cadence-detail.ts # Detail view with enrollments, overdue, step analytics
+│   ├── cadence-form.ts   # Create/edit form validation, defaults, submit helpers
+│   ├── task-queue.ts     # Assignee task queue, overdue aggregation, complete/skip
+│   └── enrollment-management.ts # Enroll, pause, resume, unenroll, batch enroll
 └── README.md
 ```
 
@@ -78,6 +85,22 @@ const queue = await tasks.listTasks({ assigneeId: 'rep-uuid', status: 'pending' 
 // Overdue detection
 const overdueTasks = await overdue.listOverdue();
 // => [{ contactName: '...', cadenceName: '...', hoursOverdue: 4.2, ... }]
+```
+
+## Views
+
+Composable view-presentation modules that wire to the API layer and return
+UI-ready aggregates. Each view is a standalone namespace exported via
+`cadence/views/`. Views are framework-agnostic — they can drive CLI dashboards,
+Next.js pages, or API response formatters.
+
+```typescript
+import { views } from './cadence';
+
+const list = await views.cadenceList.listCadencesView(true, 10, 0);
+const detail = await views.cadenceDetail.getCadenceDetail(cadenceId);
+const queue = await views.taskQueue.listTaskQueue(assigneeId, { overdueOnly: true });
+const stats = await views.cadenceList.getCadenceStats();
 ```
 
 ## Key Design Decisions

@@ -1,8 +1,8 @@
 // Phase B: Cadence Engine — TypeScript types
 // Mirrors prisma/schema.prisma
 
-import type { CadenceChannel, EnrollmentStatus } from '@prisma/client';
-export type { CadenceChannel, EnrollmentStatus };
+import type { CadenceChannel, EnrollmentStatus, TaskStatus } from '@prisma/client';
+export type { CadenceChannel, EnrollmentStatus, TaskStatus };
 
 // ── Cadence ─────────────────────────────────────────────
 
@@ -47,12 +47,16 @@ export interface CadenceTaskData {
   enrollmentId: string;
   stepId: string;
   assigneeId: string | null;
+  leadId: string | null;
   title: string;
   body: string | null;
   channel: CadenceChannel;
+  status: TaskStatus;
   dueAt: Date;
   completedAt: Date | null;
   createdAt: Date;
+  contactName?: string;
+  cadenceName?: string;
 }
 
 // ── Overdue ─────────────────────────────────────────────
@@ -60,9 +64,9 @@ export interface CadenceTaskData {
 export interface CadenceOverdueTask extends CadenceTaskData {
   contactName: string;
   cadenceName: string;
+  cadenceId: string;
   hoursOverdue: number;
   contactId: string;
-  enrollmentId: string;
 }
 
 // ── CEO Daily ───────────────────────────────────────────
@@ -76,6 +80,18 @@ export interface CeoDailyCadenceRow {
   overdueTasks: number;
 }
 
+// ── Daily Stats (dashboard) ─────────────────────────────
+
+export interface CadenceDailyStats {
+  totalCadences: number;
+  activeCadences: number;
+  totalEnrollments: number;
+  activeEnrollments: number;
+  overdueCount: number;
+  dueTodayCount: number;
+  tasksCompletedToday: number;
+}
+
 // ── State transitions ───────────────────────────────────
 
 export const ENROLLMENT_TRANSITIONS: Record<EnrollmentStatus, EnrollmentStatus[]> = {
@@ -83,4 +99,11 @@ export const ENROLLMENT_TRANSITIONS: Record<EnrollmentStatus, EnrollmentStatus[]
   PAUSED:     ['ACTIVE', 'UNENROLLED'],
   COMPLETED:  [],
   UNENROLLED: [],
+};
+
+export const TASK_STATUS_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
+  PENDING:     ['IN_PROGRESS', 'COMPLETED', 'SKIPPED'],
+  IN_PROGRESS: ['COMPLETED', 'SKIPPED'],
+  COMPLETED:   [],
+  SKIPPED:     [],
 };
