@@ -224,7 +224,7 @@ export async function setFollowUp(
       await tx.cadenceStep.create({
         data: {
           cadenceId: cadence.id,
-          sortOrder: 0,
+          sortOrder: 1,
           name: 'Follow up with lead',
           delayMinutes: 0,
           channel: 'EMAIL',
