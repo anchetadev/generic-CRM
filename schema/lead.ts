@@ -15,6 +15,8 @@ export interface LeadData {
   source: string | null;
   status: LeadStatus;
   ownerId: string | null;
+  contactId: string | null;
+  followUpAt: Date | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;

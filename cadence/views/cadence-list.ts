@@ -3,7 +3,8 @@
 
 import * as cadenceApi from '../api/cadences';
 import * as enrollmentApi from '../api/enrollments';
-import type { CadenceWithSteps, EnrollmentWithTasks } from '../../schema/cadence';
+import { prisma } from '../lib/prisma';
+import type { CadenceWithSteps, EnrollmentWithTasks, CadenceDailyStats } from '../../schema/cadence';
 
 // ── Row types ───────────────────────────────────────────
 
@@ -137,5 +138,47 @@ export async function getCadenceStats(): Promise<CadenceStats> {
     activeCadences,
     totalEnrollments,
     activeEnrollments,
+  };
+}
+
+// ── Daily stats for status dashboard ────────────────────
+
+export async function getCadenceDailyStats(): Promise<CadenceDailyStats> {
+  const baseStats = await getCadenceStats();
+
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+  const [overdueCount, dueTodayCount, tasksCompletedToday] = await Promise.all([
+    // Overdue: not completed and due before start of today
+    prisma.cadenceTask.count({
+      where: {
+        completedAt: null,
+        dueAt: { lt: startOfDay },
+        enrollment: { status: 'ACTIVE' },
+      },
+    }),
+    // Due today: not completed and due within today's boundaries
+    prisma.cadenceTask.count({
+      where: {
+        completedAt: null,
+        dueAt: { gte: startOfDay, lt: endOfDay },
+        enrollment: { status: 'ACTIVE' },
+      },
+    }),
+    // Completed today
+    prisma.cadenceTask.count({
+      where: {
+        completedAt: { gte: startOfDay, lt: endOfDay },
+      },
+    }),
+  ]);
+
+  return {
+    ...baseStats,
+    overdueCount,
+    dueTodayCount,
+    tasksCompletedToday,
   };
 }

@@ -5,16 +5,19 @@
 export type {
   CadenceChannel,
   EnrollmentStatus,
+  TaskStatus,
   CadenceWithSteps,
   CadenceStepData,
   EnrollmentWithTasks,
   CadenceTaskData,
   CadenceOverdueTask,
   CeoDailyCadenceRow,
+  CadenceDailyStats,
 } from '../schema/cadence';
 
 export {
   ENROLLMENT_TRANSITIONS,
+  TASK_STATUS_TRANSITIONS,
 } from '../schema/cadence';
 
 // Core service
