@@ -16,7 +16,9 @@
     "moduleResolution": "node"
   },
   "include": [
+    "server.ts",
     "cadence/**/*.ts",
+    "lead/**/*.ts",
     "schema/**/*.ts",
     "leads/**/*.ts",
     "scheduling/**/*.ts",

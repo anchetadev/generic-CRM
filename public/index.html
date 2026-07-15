@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM Status Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --green: #22c55e;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 2rem; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+    }
+    .stat-card .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; }
+    .stat-card.overdue .value { color: var(--red); }
+    .stat-card.due-today .value { color: var(--amber); }
+    .stat-card.completed .value { color: var(--green); }
+    .stat-card.active .value { color: var(--accent); }
+
+    .section { margin-bottom: 2rem; }
+    .section h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; }
+
+    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 0.75rem; overflow: hidden; }
+    th { background: #0f172a; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: left; padding: 0.75rem 1rem; }
+    td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); font-size: 0.875rem; }
+    tr:hover td { background: rgba(59, 130, 246, 0.05); }
+
+    .badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .badge-overdue { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+    .badge-due { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+    .badge-email { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+    .badge-call { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+    .badge-sms { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+
+    .loading { color: var(--muted); font-style: italic; padding: 2rem; text-align: center; }
+    .error { color: var(--red); padding: 1rem; background: rgba(239,68,68,0.1); border-radius: 0.5rem; }
+    .refresh-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    .refresh-btn:hover { opacity: 0.9; }
+    .last-updated { color: var(--muted); font-size: 0.75rem; margin-left: 0.5rem; }
+  </style>
+</head>
+<body>
+  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem;">
+    <h1>CRM Status Dashboard</h1>
+    <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+    <span class="last-updated" id="lastUpdated"></span>
+  </div>
+  <p class="subtitle">Coaching Season CRM — Cadence & Lead Overview</p>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card active"><div class="label">Active Enrollments</div><div class="value" id="activeEnrollments">—</div></div>
+    <div class="stat-card overdue"><div class="label">Overdue Tasks</div><div class="value" id="overdueCount">—</div></div>
+    <div class="stat-card due-today"><div class="label">Due Today</div><div class="value" id="dueTodayCount">—</div></div>
+    <div class="stat-card completed"><div class="label">Completed Today</div><div class="value" id="tasksCompletedToday">—</div></div>
+    <div class="stat-card"><div class="label">Active Cadences</div><div class="value" id="activeCadences">—</div></div>
+    <div class="stat-card"><div class="label">Total Leads</div><div class="value" id="totalLeads">—</div></div>
+  </div>
+
+  <div class="section">
+    <h2>Overdue Tasks</h2>
+    <div id="overdueTable"><div class="loading">Loading…</div></div>
+  </div>
+
+  <div class="section">
+    <h2>Due Today</h2>
+    <div id="dueTodayTable"><div class="loading">Loading…</div></div>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+
+    function renderTaskTable(items, containerId) {
+      const container = document.getElementById(containerId);
+      if (!items || items.length === 0) {
+        container.innerHTML = '<div class="loading">No tasks</div>';
+        return;
+      }
+      const rows = items.map(t => `
+        <tr>
+          <td>${esc(t.title)}</td>
+          <td>${esc(t.contactName || '—')}</td>
+          <td>${esc(t.cadenceName || '—')}</td>
+          <td><span class="badge badge-${channelClass(t.channel)}">${esc(t.channel)}</span></td>
+          <td>${formatDate(t.dueAt)}</td>
+          <td>${t.hoursOverdue > 0 ? `<span class="badge badge-overdue">${t.hoursOverdue}h overdue</span>` : ''}</td>
+          <td>
+            <button class="refresh-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem" onclick="completeTask('${t.id}')">✓ Done</button>
+            <button class="refresh-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;background:var(--border)" onclick="skipTask('${t.id}')">Skip</button>
+          </td>
+        </tr>
+      `).join('');
+      container.innerHTML = `
+        <table>
+          <thead><tr><th>Task</th><th>Contact</th><th>Cadence</th><th>Channel</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function channelClass(ch) { return ({ EMAIL: 'email', CALL: 'call', SMS: 'sms', LINKEDIN: 'email' })[ch] || 'email'; }
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+             d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadDashboard() {
+      try {
+        const [statsRes, overdueRes, dueTodayRes, leadsRes] = await Promise.all([
+          fetch(`${API}/api/stats`).then(r => r.json()),
+          fetch(`${API}/api/tasks/overdue`).then(r => r.json()),
+          fetch(`${API}/api/tasks/due-today`).then(r => r.json()),
+          fetch(`${API}/api/leads?limit=0`).then(r => r.json()).catch(() => ({ total: '—' })),
+        ]);
+
+        document.getElementById('activeEnrollments').textContent = statsRes.activeEnrollments ?? '—';
+        document.getElementById('overdueCount').textContent = statsRes.overdueCount ?? '—';
+        document.getElementById('dueTodayCount').textContent = statsRes.dueTodayCount ?? '—';
+        document.getElementById('tasksCompletedToday').textContent = statsRes.tasksCompletedToday ?? '—';
+        document.getElementById('activeCadences').textContent = statsRes.activeCadences ?? '—';
+        document.getElementById('totalLeads').textContent = leadsRes.total ?? '—';
+
+        renderTaskTable(overdueRes.items, 'overdueTable');
+        renderTaskTable(dueTodayRes.items, 'dueTodayTable');
+
+        document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      } catch (err) {
+        console.error('Dashboard load error:', err);
+      }
+    }
+
+    async function completeTask(id) {
+      await fetch(`${API}/api/tasks/${id}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      loadDashboard();
+    }
+
+    async function skipTask(id) {
+      await fetch(`${API}/api/tasks/${id}/skip`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      loadDashboard();
+    }
+
+    loadDashboard();
+    // Auto-refresh every 60 seconds
+    setInterval(loadDashboard, 60000);
+  </script>
+</body>
+</html>

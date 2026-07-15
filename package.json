@@ -6,15 +6,24 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "start": "node dist/server.js",
+    "dev": "tsx watch server.ts",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev"
   },
   "dependencies": {
-    "@prisma/client": "^5.15.0"
+    "@prisma/client": "^5.15.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.2",
+    "@types/node": "^20.14.0",
     "prisma": "^5.15.0",
-    "typescript": "^5.5.0",
-    "@types/node": "^20.14.0"
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
   }
 }

@@ -4,6 +4,7 @@
 import { prisma } from '../lib/prisma';
 import type { LeadData, LeadWithActivities, LeadStatus, ActivityType } from '../../schema/lead';
 import type { Prisma } from '@prisma/client';
+export type { LeadData, LeadWithActivities, LeadStatus, ActivityType } from '../../schema/lead';
 
 // ── Types ───────────────────────────────────────────────
 
