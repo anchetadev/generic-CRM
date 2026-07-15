@@ -64,6 +64,7 @@ interface GenerateTaskParams {
   step: CadenceStep;
   contactId: string;
   assigneeId?: string;
+  leadId?: string;
   delayMinutes: number;
 }
 
@@ -89,6 +90,7 @@ async function generateTask(
       enrollmentId: params.enrollmentId,
       stepId: params.step.id,
       assigneeId: params.assigneeId,
+      leadId: params.leadId,
       title: resolvedTitle,
       body,
       channel: params.step.channel,
@@ -121,10 +123,10 @@ export async function completeTask(
 
     if (!existing.enrollment) throw new Error('Task has no enrollment');
 
-    // 1. Mark task completed
+    // 1. Mark task completed (sync status + completedAt)
     const task = await tx.cadenceTask.update({
       where: { id: params.taskId },
-      data: { completedAt: new Date() },
+      data: { completedAt: new Date(), status: 'COMPLETED' },
       include: { step: true, enrollment: true },
     });
 
@@ -186,10 +188,10 @@ export async function skipTask(
 
     if (!task.enrollment) throw new Error('Task has no enrollment');
 
-    // Mark as completed with a note that it was skipped (just complete it — no "skipped" status in Prisma schema)
+    // Mark as skipped (status + completedAt)
     await tx.cadenceTask.update({
       where: { id: taskId },
-      data: { completedAt: new Date() },
+      data: { completedAt: new Date(), status: 'SKIPPED' },
     });
 
     // Advance same as complete
