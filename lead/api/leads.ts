@@ -2,9 +2,10 @@
 // Bridges leads to the cadence engine via contactId + followUpAt.
 
 import { prisma } from '../lib/prisma';
-import type { LeadData, LeadWithActivities, LeadStatus, ActivityType } from '../../schema/lead';
+import type { LeadData, LeadWithActivities, LeadStatus, ActivityType, LeadSource, LeadSourceDetail } from '../../schema/lead';
+import { LEAD_SOURCE_DETAIL_TO_SOURCE } from '../../schema/lead';
 import type { Prisma } from '@prisma/client';
-export type { LeadData, LeadWithActivities, LeadStatus, ActivityType } from '../../schema/lead';
+export type { LeadData, LeadWithActivities, LeadStatus, ActivityType, LeadSource, LeadSourceDetail } from '../../schema/lead';
 
 // ── Types ───────────────────────────────────────────────
 
@@ -13,7 +14,8 @@ export interface CreateLeadInput {
   email?: string;
   phone?: string;
   company?: string;
-  source?: string;
+  leadSource?: LeadSource;
+  leadSourceDetail?: LeadSourceDetail;
   ownerId?: string;
   contactId?: string;
   followUpAt?: Date;
@@ -25,7 +27,8 @@ export interface UpdateLeadInput {
   email?: string;
   phone?: string;
   company?: string;
-  source?: string;
+  leadSource?: LeadSource | null;
+  leadSourceDetail?: LeadSourceDetail | null;
   ownerId?: string | null;
   contactId?: string | null;
   followUpAt?: Date | null;
@@ -42,14 +45,25 @@ export interface ListLeadsParams {
 
 // ── Create ──────────────────────────────────────────────
 
+/** Derive leadSource from leadSourceDetail if not explicitly set. */
+function autoPopulateSource(
+  leadSource: LeadSource | undefined,
+  leadSourceDetail: LeadSourceDetail | undefined,
+): LeadSource | undefined {
+  if (leadSource || !leadSourceDetail) return leadSource;
+  return LEAD_SOURCE_DETAIL_TO_SOURCE[leadSourceDetail] ?? undefined;
+}
+
 export async function createLead(input: CreateLeadInput): Promise<LeadData> {
+  const resolvedSource = autoPopulateSource(input.leadSource, input.leadSourceDetail);
   const lead = await prisma.lead.create({
     data: {
       name: input.name,
       email: input.email,
       phone: input.phone,
       company: input.company,
-      source: input.source,
+      leadSource: resolvedSource,
+      leadSourceDetail: input.leadSourceDetail,
       ownerId: input.ownerId,
       contactId: input.contactId,
       followUpAt: input.followUpAt,
@@ -113,6 +127,16 @@ export async function listLeads(
 // ── Update ──────────────────────────────────────────────
 
 export async function updateLead(id: string, input: UpdateLeadInput): Promise<LeadData> {
+  // If detail changed, auto-populate source unless explicitly provided
+  let resolvedSource = input.leadSource;
+  if (input.leadSourceDetail !== undefined && input.leadSource === undefined) {
+    const current = await prisma.lead.findUniqueOrThrow({ where: { id } });
+    resolvedSource = autoPopulateSource(
+      current.leadSource ?? undefined,
+      input.leadSourceDetail ?? undefined,
+    );
+  }
+
   const lead = await prisma.lead.update({
     where: { id },
     data: {
@@ -120,7 +144,8 @@ export async function updateLead(id: string, input: UpdateLeadInput): Promise<Le
       email: input.email,
       phone: input.phone,
       company: input.company,
-      source: input.source,
+      leadSource: resolvedSource,
+      leadSourceDetail: input.leadSourceDetail,
       ownerId: input.ownerId,
       contactId: input.contactId,
       followUpAt: input.followUpAt,
@@ -334,7 +359,8 @@ function toLeadData(lead: any): LeadData {
     email: lead.email,
     phone: lead.phone,
     company: lead.company,
-    source: lead.source,
+    leadSource: lead.leadSource ?? null,
+    leadSourceDetail: lead.leadSourceDetail ?? null,
     status: lead.status,
     ownerId: lead.ownerId,
     contactId: lead.contactId ?? null,

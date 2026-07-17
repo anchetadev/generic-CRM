@@ -38,19 +38,20 @@ model Contact {
 // ── Leads ───────────────────────────────────────────────
 
 model Lead {
-  id          String    @id @default(cuid())
-  name        String
-  email       String?
-  phone       String?
-  company     String?
-  source      String?
-  status      LeadStatus @default(NEW)
-  ownerId     String?   @map("owner_id")
-  contactId   String?   @map("contact_id")
-  followUpAt  DateTime? @map("follow_up_at")
-  notes       String?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id                String              @id @default(cuid())
+  name              String
+  email             String?
+  phone             String?
+  company           String?
+  leadSource        LeadSource?         @map("lead_source")
+  leadSourceDetail  LeadSourceDetail?   @map("lead_source_detail")
+  status            LeadStatus          @default(NEW)
+  ownerId           String?             @map("owner_id")
+  contactId         String?             @map("contact_id")
+  followUpAt        DateTime?           @map("follow_up_at")
+  notes             String?
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
   owner     User?    @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
@@ -61,7 +62,25 @@ model Lead {
   @@index([status])
   @@index([contactId])
   @@index([followUpAt])
+  @@index([leadSource])
   @@map("leads")
+}
+
+enum LeadSource {
+  REFERRAL
+  INBOUND
+  OUTBOUND
+}
+
+enum LeadSourceDetail {
+  WARN_TRIGGER
+  LINKEDIN_ICP_MATCH
+  REFERRAL_INTRODUCTION
+  WORD_OF_MOUTH
+  SILENT_REFERRAL
+  EVENT
+  WEBSITE_CONTENT
+  OTHER
 }
 
 enum LeadStatus {
