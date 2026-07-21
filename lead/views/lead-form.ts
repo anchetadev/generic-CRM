@@ -1,7 +1,7 @@
 // Lead create/edit form helper — validation, defaults, and wiring to lead/api/leads.ts.
 
 import * as leadApi from '../api/leads';
-import type { LeadData, LeadStatus } from '../../schema/lead';
+import type { LeadData, LeadStatus, LeadSource, LeadSourceDetail } from '../../schema/lead';
 import type { ActivityType } from '@prisma/client';
 
 // Re-export input types for form consumers
@@ -165,7 +165,46 @@ export function blankLeadInput(): leadApi.CreateLeadInput {
     email: '',
     phone: '',
     company: '',
-    source: '',
     notes: '',
   };
+}
+
+// ── Lead Source helpers ─────────────────────────────────
+
+const LEAD_SOURCES: LeadSource[] = ['REFERRAL', 'INBOUND', 'OUTBOUND'];
+
+export function getLeadSourceOptions(): { value: LeadSource; label: string }[] {
+  return LEAD_SOURCES.map((s) => ({
+    value: s,
+    label: s.charAt(0) + s.slice(1).toLowerCase(),
+  }));
+}
+
+const LEAD_SOURCE_DETAILS: LeadSourceDetail[] = [
+  'WARN_TRIGGER',
+  'LINKEDIN_ICP_MATCH',
+  'REFERRAL_INTRODUCTION',
+  'WORD_OF_MOUTH',
+  'SILENT_REFERRAL',
+  'EVENT',
+  'WEBSITE_CONTENT',
+  'OTHER',
+];
+
+const LEAD_SOURCE_DETAIL_LABELS: Record<LeadSourceDetail, string> = {
+  WARN_TRIGGER: 'WARN Trigger',
+  LINKEDIN_ICP_MATCH: 'LinkedIn ICP Match',
+  REFERRAL_INTRODUCTION: 'Referral Introduction',
+  WORD_OF_MOUTH: 'Word of Mouth',
+  SILENT_REFERRAL: 'Silent Referral',
+  EVENT: 'Event',
+  WEBSITE_CONTENT: 'Website/Content',
+  OTHER: 'Other',
+};
+
+export function getLeadSourceDetailOptions(): { value: LeadSourceDetail; label: string }[] {
+  return LEAD_SOURCE_DETAILS.map((d) => ({
+    value: d,
+    label: LEAD_SOURCE_DETAIL_LABELS[d],
+  }));
 }

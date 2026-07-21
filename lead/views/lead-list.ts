@@ -14,7 +14,8 @@ export interface LeadListRow {
   email: string | null;
   phone: string | null;
   company: string | null;
-  source: string | null;
+  leadSource: string | null;
+  leadSourceDetail: string | null;
   status: LeadStatus;
   ownerId: string | null;
   createdAt: Date;
@@ -119,7 +120,8 @@ function toListRow(lead: LeadData): LeadListRow {
     email: lead.email,
     phone: lead.phone,
     company: lead.company,
-    source: lead.source,
+    leadSource: lead.leadSource,
+    leadSourceDetail: lead.leadSourceDetail,
     status: lead.status,
     ownerId: lead.ownerId,
     createdAt: lead.createdAt,
