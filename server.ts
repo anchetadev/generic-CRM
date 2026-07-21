@@ -98,6 +98,51 @@ app.get('/api/leads/pipeline', async (req, res) => {
   }
 });
 
+app.get('/api/leads/:id', async (req, res) => {
+  try {
+    const lead = await leads.getLeadWithActivities(req.params.id);
+    if (!lead) {
+      res.status(404).json({ error: 'Lead not found' });
+      return;
+    }
+    res.json(lead);
+  } catch (err: any) {
+    console.error('GET /api/leads/:id error:', err);
+    res.status(500).json({ error: err?.message ?? 'Failed to fetch lead' });
+  }
+});
+
+app.post('/api/leads/:id/follow-up', async (req, res) => {
+  try {
+    const { followUpAt, assigneeId } = req.body;
+    const date = followUpAt ? new Date(followUpAt) : null;
+    if (followUpAt && isNaN(date!.getTime())) {
+      res.status(400).json({ error: 'Invalid followUpAt date' });
+      return;
+    }
+    const lead = await leads.setFollowUp(req.params.id, date, assigneeId);
+    res.json(lead);
+  } catch (err: any) {
+    console.error('POST /api/leads/:id/follow-up error:', err);
+    res.status(500).json({ error: err?.message ?? 'Failed to set follow-up' });
+  }
+});
+
+app.patch('/api/leads/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status) {
+      res.status(400).json({ error: 'status is required' });
+      return;
+    }
+    const lead = await leads.updateStatus(req.params.id, status);
+    res.json(lead);
+  } catch (err: any) {
+    console.error('PATCH /api/leads/:id/status error:', err);
+    res.status(500).json({ error: err?.message ?? 'Failed to update status' });
+  }
+});
+
 // ── Task Actions ────────────────────────────────────────
 
 app.post('/api/tasks/:id/complete', async (req, res) => {

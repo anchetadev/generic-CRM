@@ -138,6 +138,20 @@ export async function submitAddActivity(
   }
 }
 
+/** Set or clear a follow-up date on a lead. Triggers cadence task creation. */
+export async function submitSetFollowUp(
+  leadId: string,
+  followUpAt: Date | null,
+  assigneeId?: string,
+): Promise<FormResult<leadApi.LeadData>> {
+  try {
+    const lead = await leadApi.setFollowUp(leadId, followUpAt, assigneeId);
+    return { success: true, data: lead };
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? 'Set follow-up failed' };
+  }
+}
+
 // ── Form helpers ────────────────────────────────────────
 
 const LEAD_STATUSES: LeadStatus[] = ['NEW', 'CONTACTED', 'QUALIFIED', 'DISQUALIFIED', 'CONVERTED'];
