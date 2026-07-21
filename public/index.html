@@ -428,7 +428,7 @@
       if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
     }
 
-    function saveSource(id) {
+    async function saveSource(id) {
       const source = document.getElementById('sourceInput').value || null;
       const detail = document.getElementById('sourceDetailInput').value || null;
       await fetch(`${API}/api/leads/${id}`, {
