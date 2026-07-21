@@ -152,6 +152,26 @@ app.patch('/api/leads/:id/status', async (req, res) => {
   }
 });
 
+app.patch('/api/leads/:id', async (req, res) => {
+  try {
+    const { name, email, phone, company, leadSource, leadSourceDetail, ownerId, notes } = req.body;
+    const lead = await leads.updateLead(req.params.id, {
+      ...(name !== undefined && { name }),
+      ...(email !== undefined && { email }),
+      ...(phone !== undefined && { phone }),
+      ...(company !== undefined && { company }),
+      ...(leadSource !== undefined && { leadSource }),
+      ...(leadSourceDetail !== undefined && { leadSourceDetail }),
+      ...(ownerId !== undefined && { ownerId }),
+      ...(notes !== undefined && { notes }),
+    });
+    res.json(lead);
+  } catch (err: any) {
+    console.error('PATCH /api/leads/:id error:', err);
+    res.status(500).json({ error: err?.message ?? 'Failed to update lead' });
+  }
+});
+
 // ── Task Actions ────────────────────────────────────────
 
 app.post('/api/tasks/:id/complete', async (req, res) => {
