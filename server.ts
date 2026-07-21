@@ -7,7 +7,7 @@ import path from 'path';
 
 // Cadence module
 import { views as cadenceViews } from './cadence';
-import { leads } from './lead';
+import { leads, prisma } from './lead';
 import { leadList } from './lead/views';
 
 const app = express();
@@ -79,7 +79,9 @@ app.get('/api/leads', async (req, res) => {
   try {
     const status = req.query.status as string | undefined;
     const search = req.query.search as string | undefined;
-    const result = await leads.listLeads({ status: status as any, search });
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+    const result = await leads.listLeads({ status: status as any, search, limit, offset });
     res.json(result);
   } catch (err: any) {
     console.error('GET /api/leads error:', err);
@@ -119,6 +121,13 @@ app.post('/api/leads/:id/follow-up', async (req, res) => {
     if (followUpAt && isNaN(date!.getTime())) {
       res.status(400).json({ error: 'Invalid followUpAt date' });
       return;
+    }
+    if (assigneeId) {
+      const user = await prisma.user.findUnique({ where: { id: assigneeId } });
+      if (!user) {
+        res.status(400).json({ error: 'assigneeId does not match an existing user' });
+        return;
+      }
     }
     const lead = await leads.setFollowUp(req.params.id, date, assigneeId);
     res.json(lead);
