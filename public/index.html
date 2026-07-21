@@ -68,6 +68,19 @@
 
     .loading { color: var(--muted); font-style: italic; padding: 2rem; text-align: center; }
     .error { color: var(--red); padding: 1rem; background: rgba(239,68,68,0.1); border-radius: 0.5rem; }
+    .lead-row { cursor: pointer; }
+    .lead-row:hover td { background: rgba(59, 130, 246, 0.1); }
+    .status-NEW { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+    .status-CONTACTED { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+    .status-QUALIFIED { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+    .status-DISQUALIFIED { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+    .status-CONVERTED { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+    .follow-up-set { background: rgba(34, 197, 94, 0.15); color: var(--green); padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; }
+    .follow-up-none { color: var(--muted); font-size: 0.75rem; }
+    .modal-field { margin-bottom: 0.75rem; }
+    .modal-field label { display: block; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .modal-field .val { font-size: 0.875rem; }
+    .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
     .refresh-btn {
       background: var(--accent);
       color: white;
@@ -107,6 +120,34 @@
   <div class="section">
     <h2>Due Today</h2>
     <div id="dueTodayTable"><div class="loading">Loading…</div></div>
+  </div>
+
+  <div class="section">
+    <h2>Leads</h2>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;align-items:center">
+      <input type="text" id="leadSearch" placeholder="Search leads…" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.75rem;border-radius:0.5rem;font-size:0.875rem;width:240px" />
+      <select id="leadStatusFilter" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.75rem;border-radius:0.5rem;font-size:0.875rem">
+        <option value="">All Statuses</option>
+        <option value="NEW">New</option>
+        <option value="CONTACTED">Contacted</option>
+        <option value="QUALIFIED">Qualified</option>
+        <option value="DISQUALIFIED">Disqualified</option>
+        <option value="CONVERTED">Converted</option>
+      </select>
+      <button class="refresh-btn" onclick="loadLeads()">Filter</button>
+    </div>
+    <div id="leadsTable"><div class="loading">Loading…</div></div>
+  </div>
+
+  <!-- Lead Detail Modal -->
+  <div id="leadModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;justify-content:center;align-items:center">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:0.75rem;padding:1.5rem;width:min(560px,90vw);max-height:85vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h2 id="modalTitle" style="font-size:1.125rem">Lead Detail</h2>
+        <button onclick="closeLeadModal()" style="background:none;border:none;color:var(--muted);font-size:1.25rem;cursor:pointer">✕</button>
+      </div>
+      <div id="modalBody">Loading…</div>
+    </div>
   </div>
 
   <script>
@@ -184,7 +225,179 @@
       loadDashboard();
     }
 
+    // ── Leads ─────────────────────────────────────────
+
+    async function loadLeads() {
+      try {
+        const search = document.getElementById('leadSearch').value;
+        const status = document.getElementById('leadStatusFilter').value;
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (status) params.set('status', status);
+        params.set('limit', '50');
+        const res = await fetch(`${API}/api/leads?${params}`);
+        const data = await res.json();
+        renderLeadsTable(data.items || []);
+      } catch (err) {
+        console.error('Load leads error:', err);
+      }
+    }
+
+    function renderLeadsTable(leads) {
+      const container = document.getElementById('leadsTable');
+      if (!leads || leads.length === 0) {
+        container.innerHTML = '<div class="loading">No leads found</div>';
+        return;
+      }
+      const rows = leads.map(l => `
+        <tr class="lead-row" onclick="openLeadDetail('${l.id}')">
+          <td style="font-weight:500">${esc(l.name)}</td>
+          <td>${esc(l.company || '—')}</td>
+          <td>${esc(l.email || '—')}</td>
+          <td><span class="badge status-${l.status}">${esc(l.status)}</span></td>
+          <td>${l.followUpAt
+            ? `<span class="follow-up-set">${formatDate(l.followUpAt)}</span>`
+            : '<span class="follow-up-none">None</span>'}
+          </td>
+          <td>${esc(l.leadSource || '—')}</td>
+        </tr>
+      `).join('');
+      container.innerHTML = `
+        <table>
+          <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Status</th><th>Follow-Up</th><th>Source</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    // ── Lead Detail Modal ──────────────────────────────
+
+    let currentLeadId = null;
+
+    async function openLeadDetail(id) {
+      currentLeadId = id;
+      document.getElementById('leadModal').style.display = 'flex';
+      document.getElementById('modalBody').innerHTML = '<div class="loading">Loading…</div>';
+      try {
+        const res = await fetch(`${API}/api/leads/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const lead = await res.json();
+        renderLeadModal(lead);
+      } catch (err) {
+        document.getElementById('modalBody').innerHTML = '<div class="error">Failed to load lead</div>';
+      }
+    }
+
+    function closeLeadModal() {
+      document.getElementById('leadModal').style.display = 'none';
+      currentLeadId = null;
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('leadModal').addEventListener('click', function(e) {
+      if (e.target === this) closeLeadModal();
+    });
+
+    function renderLeadModal(lead) {
+      document.getElementById('modalTitle').textContent = lead.name;
+      const followUpValue = lead.followUpAt ? new Date(lead.followUpAt).toISOString().slice(0, 16) : '';
+      const transitions = {
+        NEW: ['CONTACTED', 'DISQUALIFIED'],
+        CONTACTED: ['QUALIFIED', 'DISQUALIFIED'],
+        QUALIFIED: ['CONVERTED', 'DISQUALIFIED'],
+        DISQUALIFIED: [],
+        CONVERTED: [],
+      };
+      const nextStatuses = transitions[lead.status] || [];
+
+      const statusButtons = nextStatuses.map(s =>
+        `<button class="refresh-btn" style="padding:0.375rem 0.75rem;font-size:0.8125rem" onclick="transitionStatus('${lead.id}','${s}')">→ ${s.charAt(0)+s.slice(1).toLowerCase()}</button>`
+      ).join('');
+
+      const activities = (lead.activities || []).slice(0, 10).map(a =>
+        `<div style="padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.8125rem">
+          <span class="badge badge-${channelClass(a.type)}" style="margin-right:0.5rem">${esc(a.type)}</span>
+          <strong>${esc(a.subject || '(no subject)')}</strong>
+          <span style="color:var(--muted);margin-left:0.5rem">${formatDate(a.createdAt)}</span>
+          ${a.body ? `<div style="color:var(--muted);margin-top:0.25rem">${esc(a.body)}</div>` : ''}
+        </div>`
+      ).join('');
+
+      document.getElementById('modalBody').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem">
+          <div class="modal-field"><label>Email</label><div class="val">${esc(lead.email || '—')}</div></div>
+          <div class="modal-field"><label>Phone</label><div class="val">${esc(lead.phone || '—')}</div></div>
+          <div class="modal-field"><label>Company</label><div class="val">${esc(lead.company || '—')}</div></div>
+          <div class="modal-field"><label>Source</label><div class="val">${esc(lead.leadSource || '—')}${lead.leadSourceDetail ? ` / ${esc(lead.leadSourceDetail)}` : ''}</div></div>
+          <div class="modal-field"><label>Status</label><div class="val"><span class="badge status-${lead.status}">${esc(lead.status)}</span></div></div>
+          <div class="modal-field"><label>Owner</label><div class="val">${esc(lead.ownerId || '—')}</div></div>
+        </div>
+        ${lead.notes ? `<div class="modal-field"><label>Notes</label><div class="val">${esc(lead.notes)}</div></div>` : ''}
+
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:0.5rem;padding:1rem;margin:1rem 0">
+          <label style="display:block;color:var(--muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem">Follow-Up Date</label>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <input type="datetime-local" id="followUpInput" value="${followUpValue}"
+              style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:0.5rem;border-radius:0.5rem;font-size:0.875rem" />
+            <button class="refresh-btn" style="padding:0.5rem 0.75rem" onclick="saveFollowUp('${lead.id}')">Save</button>
+            ${lead.followUpAt ? `<button class="refresh-btn" style="padding:0.5rem 0.75rem;background:var(--border);color:var(--text)" onclick="clearFollowUp('${lead.id}')">Clear</button>` : ''}
+          </div>
+          ${lead.followUpAt ? `<div style="margin-top:0.5rem;font-size:0.8125rem;color:var(--green)">✓ Follow-up set — cadence task will be created/updated</div>` : ''}
+        </div>
+
+        ${statusButtons ? `<div class="modal-actions"><span style="color:var(--muted);font-size:0.8125rem;line-height:2">Transition:</span>${statusButtons}</div>` : ''}
+
+        <div style="margin-top:1.25rem">
+          <h3 style="font-size:0.9375rem;margin-bottom:0.75rem">Recent Activity</h3>
+          ${activities || '<div class="loading">No activity</div>'}
+        </div>
+      `;
+    }
+
+    async function saveFollowUp(id) {
+      const input = document.getElementById('followUpInput').value;
+      if (!input) return;
+      const date = new Date(input).toISOString();
+      await fetch(`${API}/api/leads/${id}/follow-up`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ followUpAt: date }),
+      });
+      openLeadDetail(id);
+      loadLeads();
+      loadDashboard();
+    }
+
+    async function clearFollowUp(id) {
+      await fetch(`${API}/api/leads/${id}/follow-up`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ followUpAt: null }),
+      });
+      openLeadDetail(id);
+      loadLeads();
+      loadDashboard();
+    }
+
+    async function transitionStatus(id, status) {
+      await fetch(`${API}/api/leads/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      openLeadDetail(id);
+      loadLeads();
+    }
+
+    // Debounced search
+    let searchTimeout;
+    document.getElementById('leadSearch').addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(loadLeads, 300);
+    });
+
     loadDashboard();
+    loadLeads();
     // Auto-refresh every 60 seconds
     setInterval(loadDashboard, 60000);
   </script>
