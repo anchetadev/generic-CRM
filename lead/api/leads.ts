@@ -39,6 +39,7 @@ export interface ListLeadsParams {
   status?: LeadStatus;
   ownerId?: string;
   search?: string; // matches name, email, company
+  leadSource?: LeadSource;
   limit?: number;
   offset?: number;
 }
@@ -101,6 +102,9 @@ export async function listLeads(
   }
   if (params.ownerId) {
     where.ownerId = params.ownerId;
+  }
+  if (params.leadSource) {
+    where.leadSource = params.leadSource;
   }
   if (params.search) {
     const term = params.search;

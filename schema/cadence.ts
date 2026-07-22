@@ -67,6 +67,7 @@ export interface CadenceOverdueTask extends CadenceTaskData {
   cadenceId: string;
   hoursOverdue: number;
   contactId: string;
+  leadSource: string | null;
 }
 
 // ── CEO Daily ───────────────────────────────────────────

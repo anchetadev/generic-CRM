@@ -79,9 +79,10 @@ app.get('/api/leads', async (req, res) => {
   try {
     const status = req.query.status as string | undefined;
     const search = req.query.search as string | undefined;
+    const leadSource = req.query.leadSource as string | undefined;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
     const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
-    const result = await leads.listLeads({ status: status as any, search, limit, offset });
+    const result = await leads.listLeads({ status: status as any, search, leadSource: leadSource as any, limit, offset });
     res.json(result);
   } catch (err: any) {
     console.error('GET /api/leads error:', err);

@@ -126,6 +126,7 @@ async function getOverdueTasksForCadence(
           cadence: { select: { id: true, name: true } },
         },
       },
+      lead: { select: { leadSource: true } },
     },
     orderBy: { dueAt: 'asc' },
   });
@@ -147,6 +148,7 @@ async function getOverdueTasksForCadence(
     contactName: t.enrollment.contact.name,
     cadenceId: t.enrollment.cadence.id,
     cadenceName: t.enrollment.cadence.name,
+    leadSource: t.lead?.leadSource ?? null,
     hoursOverdue:
       Math.round(((now.getTime() - t.dueAt.getTime()) / (1000 * 60 * 60)) * 10) / 10,
   }));

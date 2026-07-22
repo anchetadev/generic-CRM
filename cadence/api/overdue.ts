@@ -19,6 +19,7 @@ export async function listOverdue(): Promise<CadenceOverdueTask[]> {
           cadence: { select: { id: true, name: true } },
         },
       },
+      lead: { select: { leadSource: true } },
     },
     orderBy: { dueAt: 'asc' },
   });
@@ -40,6 +41,7 @@ export async function listOverdue(): Promise<CadenceOverdueTask[]> {
     contactName: t.enrollment.contact.name,
     cadenceId: t.enrollment.cadence.id,
     cadenceName: t.enrollment.cadence.name,
+    leadSource: t.lead?.leadSource ?? null,
     hoursOverdue: Math.round(
       ((now.getTime() - t.dueAt.getTime()) / (1000 * 60 * 60)) * 10,
     ) / 10,
@@ -65,6 +67,7 @@ export async function listDueToday(): Promise<CadenceOverdueTask[]> {
           cadence: { select: { id: true, name: true } },
         },
       },
+      lead: { select: { leadSource: true } },
     },
     orderBy: { dueAt: 'asc' },
   });
@@ -86,6 +89,7 @@ export async function listDueToday(): Promise<CadenceOverdueTask[]> {
     contactName: t.enrollment.contact.name,
     cadenceId: t.enrollment.cadence.id,
     cadenceName: t.enrollment.cadence.name,
+    leadSource: t.lead?.leadSource ?? null,
     hoursOverdue: 0,
   }));
 }
@@ -107,6 +111,7 @@ export async function listCompletedToday(): Promise<CadenceOverdueTask[]> {
           cadence: { select: { id: true, name: true } },
         },
       },
+      lead: { select: { leadSource: true } },
     },
     orderBy: { completedAt: 'desc' },
   });
@@ -128,6 +133,7 @@ export async function listCompletedToday(): Promise<CadenceOverdueTask[]> {
     contactName: t.enrollment.contact.name,
     cadenceId: t.enrollment.cadence.id,
     cadenceName: t.enrollment.cadence.name,
+    leadSource: t.lead?.leadSource ?? null,
     hoursOverdue: 0,
   }));
 }

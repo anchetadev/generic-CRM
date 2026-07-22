@@ -134,6 +134,12 @@
         <option value="DISQUALIFIED">Disqualified</option>
         <option value="CONVERTED">Converted</option>
       </select>
+      <select id="leadSourceFilter" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.75rem;border-radius:0.5rem;font-size:0.875rem">
+        <option value="">All Sources</option>
+        <option value="REFERRAL">Referral</option>
+        <option value="INBOUND">Inbound</option>
+        <option value="OUTBOUND">Outbound</option>
+      </select>
       <button class="refresh-btn" onclick="loadLeads()">Filter</button>
     </div>
     <div id="leadsTable"><div class="loading">Loading…</div></div>
@@ -167,6 +173,7 @@
           <td><span class="badge badge-${channelClass(t.channel)}">${esc(t.channel)}</span></td>
           <td>${formatDate(t.dueAt)}</td>
           <td>${t.hoursOverdue > 0 ? `<span class="badge badge-overdue">${t.hoursOverdue}h overdue</span>` : ''}</td>
+          <td>${esc(t.leadSource || '—')}</td>
           <td>
             <button class="refresh-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem" onclick="completeTask('${t.id}')">✓ Done</button>
             <button class="refresh-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;background:var(--border)" onclick="skipTask('${t.id}')">Skip</button>
@@ -175,7 +182,7 @@
       `).join('');
       container.innerHTML = `
         <table>
-          <thead><tr><th>Task</th><th>Contact</th><th>Cadence</th><th>Channel</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Task</th><th>Contact</th><th>Cadence</th><th>Channel</th><th>Due</th><th>Status</th><th>Source</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       `;
@@ -231,9 +238,11 @@
       try {
         const search = document.getElementById('leadSearch').value;
         const status = document.getElementById('leadStatusFilter').value;
+        const source = document.getElementById('leadSourceFilter').value;
         const params = new URLSearchParams();
         if (search) params.set('search', search);
         if (status) params.set('status', status);
+        if (source) params.set('leadSource', source);
         params.set('limit', '50');
         const res = await fetch(`${API}/api/leads?${params}`);
         const data = await res.json();
